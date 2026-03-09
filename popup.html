@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Tab Manager</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 520px; max-height: 600px; overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      font-size: 13px; background: #2b2b2b; color: #e8e8e8;
+      display: flex; flex-direction: column;
+    }
+    .topbar {
+      flex-shrink: 0; display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px; background: #232323; border-bottom: 1px solid #3a3a3a;
+    }
+    .topbar-title { font-weight: 700; font-size: 13px; color: #f0c060; letter-spacing: 0.02em; flex: 1; }
+    .tab-total { font-size: 11px; color: #999; }
+    .toggle-wrap { display: flex; background: #3a3a3a; border-radius: 5px; padding: 2px; gap: 2px; }
+    .toggle-btn {
+      border: none; background: transparent; color: #aaa; font-size: 11px;
+      padding: 3px 8px; border-radius: 4px; cursor: pointer; font-family: inherit;
+      transition: background 0.15s, color 0.15s;
+    }
+    .toggle-btn.active { background: #555; color: #fff; }
+    .search-wrap {
+      flex-shrink: 0; display: flex; align-items: center;
+      background: #1e1e1e; border-bottom: 1px solid #3a3a3a; padding: 0 10px;
+    }
+    #searchInput {
+      flex: 1; border: none; outline: none; padding: 9px 8px;
+      font-size: 13px; color: #ddd; background: transparent; font-family: inherit;
+    }
+    #searchInput::placeholder { color: #555; font-style: italic; }
+    .search-icon { color: #666; font-size: 14px; flex-shrink: 0; }
+    #root { overflow-y: auto; flex: 1; scrollbar-width: thin; scrollbar-color: #555 #2b2b2b; }
+    .group-section { position: relative; }
+    .group-section::before {
+      content: ""; position: absolute; left: 0; top: 0; bottom: 0;
+      width: 4px; background: var(--group-color, #888);
+    }
+    .group-header {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 10px 6px 14px; cursor: pointer; user-select: none;
+    }
+    .group-header:hover { background: rgba(255,255,255,0.03); }
+    .group-pill {
+      display: inline-block; background: var(--group-color, #888); color: #fff;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.04em; padding: 2px 10px;
+      border-radius: 4px; text-transform: lowercase; max-width: 280px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .group-count { font-size: 11px; color: #777; }
+    .group-chev { margin-left: auto; font-size: 9px; color: #555; transition: transform 0.15s; }
+    .group-section.collapsed .group-chev { transform: rotate(-90deg); }
+    .group-section.collapsed .tab-list { display: none; }
+    /* Close button on group header — hidden until hover */
+    .group-close-btn {
+      display: none;
+      border: none; background: none; cursor: pointer;
+      color: #888; font-size: 12px; line-height: 1;
+      padding: 2px 5px; border-radius: 3px; margin-left: auto;
+      transition: color 0.1s, background 0.1s;
+    }
+    .group-header:hover .group-close-btn { display: block; }
+    .group-close-btn:hover { color: #ff6b6b; background: rgba(229,57,53,0.2); }
+    /* Push chev to far right when close btn visible */
+    .group-header:hover .group-chev { margin-left: 4px; }
+    .tab-list { list-style: none; }
+    .tab-row {
+      display: flex; align-items: center; padding: 7px 10px 7px 14px;
+      cursor: pointer; border-bottom: 1px solid #323232; transition: background 0.1s;
+    }
+    .tab-row:hover    { background: #404040; }
+    .tab-row.selected,
+    .tab-row.selected.active-tab {
+      background: var(--group-color, #5a7a9a);
+      outline: none;
+      box-shadow: inset 3px 0 0 rgba(255,255,255,0.35);
+    }
+    .tab-row.selected .tab-title  { color: #fff; }
+    .tab-row.selected .tab-domain { color: rgba(255,255,255,0.6); }
+    .tab-row.active-tab { background: #3c3c3c; }
+    .tab-favicon-wrap { width: 30px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .tab-favicon { width: 18px; height: 18px; border-radius: 3px; object-fit: contain; display: block; }
+    .favicon-ph {
+      width: 18px; height: 18px; background: #444; border-radius: 3px;
+      display: flex; align-items: center; justify-content: center; font-size: 10px; color: #888;
+    }
+    .tab-info { flex: 1; min-width: 0; }
+    .tab-title {
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      font-size: 13.5px; font-weight: 600; color: #e2e2e2; line-height: 1.35;
+    }
+    .tab-row.active-tab .tab-title { color: #fff; }
+    .tab-domain {
+      flex-shrink: 0; font-size: 11px; color: #666; margin-left: 12px;
+      white-space: nowrap; max-width: 150px; overflow: hidden; text-overflow: ellipsis;
+    }
+    .tab-actions { display: none; gap: 2px; margin-left: 8px; flex-shrink: 0; }
+    .tab-row:hover .tab-actions, .tab-row.selected .tab-actions { display: flex; }
+    .act-btn {
+      background: none; border: none; cursor: pointer; color: #888;
+      font-size: 14px; line-height: 1; padding: 2px 4px; border-radius: 3px;
+      transition: color 0.1s, background 0.1s;
+    }
+    .act-btn:hover { color: #ddd; background: #4a4a4a; }
+    .act-btn.close:hover { color: #ff6b6b; background: #4a2020; }
+    /* Muted (silent, user-muted): amber, subtle */
+    .act-btn.muted-btn { color: #f0a030; }
+    .act-btn.muted-btn:hover { color: #ffd080; background: #4a3a10; }
+    /* Audible (actively playing): red pill, animated pulse, always visible */
+    .act-btn.audible-btn {
+      color: #fff;
+      background: #e53935;
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 13px;
+      animation: audible-pulse 2s ease-in-out infinite;
+    }
+    .act-btn.audible-btn:hover { background: #ff6b6b; color: #fff; }
+    @keyframes audible-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(229,57,53,0.7); }
+      50%       { box-shadow: 0 0 0 5px rgba(229,57,53,0); }
+    }
+    /* Always show actions when tab is audible or muted */
+    .tab-row.is-audible .tab-actions,
+    .tab-row.is-muted   .tab-actions { display: flex; }
+    .active-dot { width: 7px; height: 7px; border-radius: 50%; background: #4caf50; flex-shrink: 0; margin-left: 6px; }
+    /* Close-dupes button in topbar */
+    .topbar-btn {
+      border: none; background: #3a3a3a; color: #bbb; font-size: 11px;
+      padding: 4px 9px; border-radius: 4px; cursor: pointer; font-family: inherit;
+      transition: background 0.15s, color 0.15s; white-space: nowrap;
+    }
+    .topbar-btn:hover { background: #e53935; color: #fff; }
+    .topbar-btn:disabled { opacity: 0.4; cursor: default; }
+    .topbar-btn:disabled:hover { background: #3a3a3a; color: #bbb; }
+    /* Mute-all — icon-only pill, subtle until audio is active */
+    #btnMuteAll {
+      border: none; cursor: pointer; font-size: 15px; line-height: 1;
+      padding: 3px 5px; border-radius: 4px; background: transparent; color: #555;
+      transition: background 0.15s, color 0.15s;
+      position: relative;
+    }
+    #btnMuteAll.has-audio {
+      color: #fff;
+      background: #e53935;
+      animation: audible-pulse 2s ease-in-out infinite;
+    }
+    #btnMuteAll.all-muted { color: #f0a030; background: transparent; animation: none; }
+    #btnMuteAll:hover { background: #555; color: #fff; animation: none; }
+    .tab-row.no-match { display: none; }
+    .group-section.all-hidden { display: none; }
+    .empty { padding: 30px; text-align: center; color: #666; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="topbar-title">kTab Manager</span>
+    <span class="tab-total" id="totalCount"></span>
+    <button id="btnMuteAll" title="Mute all tabs">&#128266;</button>
+    <button class="topbar-btn" id="btnDupes" title="Close all duplicate tabs, keeping one per URL">Close dupes</button>
+    <div class="toggle-wrap">
+      <button class="toggle-btn active" id="btnDomain">Domain</button>
+      <button class="toggle-btn"        id="btnWindow">Window</button>
+    </div>
+  </div>
+  <div class="search-wrap">
+    <span class="search-icon">&#128269;</span>
+    <input id="searchInput" type="text"
+           placeholder="Please enter a tag title or domain for searching"
+           autocomplete="off" spellcheck="false" />
+  </div>
+  <div id="root"></div>
+  <script src="popup.js"></script>
+</body>
+</html>
