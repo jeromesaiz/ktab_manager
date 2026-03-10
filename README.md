@@ -4,7 +4,7 @@ kTab Manager is a keyboard-first Firefox extension for managing tabs. It shows a
 
 ## Keyboard flow
 
-The core experience is designed to never leave the keyboard:
+While kTab Manager works perfectly with the mouse, the core experience is designed to never leave the keyboard:
 
 - **Option+T** (Mac) or **Alt+Shift+T** (Windows/Linux) — open kTab Manager
 - **Type** to instantly filter by domain or page title
