@@ -1,10 +1,13 @@
 {
   "manifest_version": 2,
   "name": "kTab Manager",
-  "version": "1.1",
+  "version": "1.2",
   "description": "Keyboard-first tab manager. Instantly search, navigate and switch between all your open tabs, grouped by domain or window. Open with Option+T, type to search, arrow to navigate, Enter to select",
   "homepage_url": "https://github.com/jeromesaiz/ktab_manager",
   "permissions": ["tabs"],
+  "background": {
+    "scripts": ["background.js"]
+  },
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -32,7 +35,7 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "ktab-manager@jeromesaiz",
-      "strict_min_version": "109.0",
+      "strict_min_version": "140.0",
       "data_collection_permissions": {
         "required": ["none"],
         "optional": []

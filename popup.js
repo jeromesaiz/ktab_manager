@@ -7,6 +7,7 @@
   const btnWindow = document.getElementById("btnWindow");
   const btnDupes   = document.getElementById("btnDupes");
   const btnMuteAll = document.getElementById("btnMuteAll");
+  const btnPopularity = document.getElementById("btnPopularity");
 
   // ── Fetch tabs ────────────────────────────────────────────────────────────
   const tabs = await browser.tabs.query({});
@@ -48,6 +49,20 @@
       btnMuteAll.innerHTML = "&#128266;"; // 🔊
       btnMuteAll.title = "No audio playing";
     }
+  }
+
+  // ── Popularity sort state ──────────────────────────────────────────────────
+  let popularitySort = true;
+  let accessCounts = {};
+  try {
+    accessCounts = await browser.runtime.sendMessage({ type: "getAccessCounts" }) || {};
+  } catch (e) {
+    accessCounts = {};
+  }
+  var POPULARITY_THRESHOLD = 5;
+  function getCount(tabId) {
+    var count = accessCounts[tabId] || 0;
+    return count >= POPULARITY_THRESHOLD ? count : 0;
   }
 
   updateDupesBtn();
@@ -104,10 +119,14 @@
       if (!map.has(d)) map.set(d, []);
       map.get(d).push(t);
     });
-    // Sort: "browser" last, rest alphabetically
     return new Map([...map.entries()].sort(function(a, b) {
       if (a[0] === "browser") return 1;
       if (b[0] === "browser") return -1;
+      if (popularitySort) {
+        var aSum = a[1].reduce(function(s, t) { return s + getCount(t.id); }, 0);
+        var bSum = b[1].reduce(function(s, t) { return s + getCount(t.id); }, 0);
+        if (aSum !== bSum) return bSum - aSum;
+      }
       return a[0].localeCompare(b[0]);
     }));
   }
@@ -118,10 +137,14 @@
       if (!map.has(t.windowId)) map.set(t.windowId, []);
       map.get(t.windowId).push(t);
     });
-    // Active window first
     return new Map([...map.entries()].sort(function(a, b) {
-      const aA = a[1].some(function(t) { return t.active; }) ? 0 : 1;
-      const bA = b[1].some(function(t) { return t.active; }) ? 0 : 1;
+      if (popularitySort) {
+        var aSum = a[1].reduce(function(s, t) { return s + getCount(t.id); }, 0);
+        var bSum = b[1].reduce(function(s, t) { return s + getCount(t.id); }, 0);
+        if (aSum !== bSum) return bSum - aSum;
+      }
+      var aA = a[1].some(function(t) { return t.active; }) ? 0 : 1;
+      var bA = b[1].some(function(t) { return t.active; }) ? 0 : 1;
       return aA - bA || a[0] - b[0];
     }));
   }
@@ -137,7 +160,12 @@
     winCounter = 0;
     const frag = document.createDocumentFragment();
 
-    const groups = mode === "domain" ? buildDomainGroups(tabs) : buildWindowGroups(tabs);
+    // Sort tabs by popularity before grouping (preserves within-group order)
+    const sortedTabs = popularitySort
+      ? tabs.slice().sort(function(a, b) { return getCount(b.id) - getCount(a.id); })
+      : tabs;
+
+    const groups = mode === "domain" ? buildDomainGroups(sortedTabs) : buildWindowGroups(sortedTabs);
 
     groups.forEach(function(groupTabs, groupKey) {
       const label = mode === "domain"
@@ -393,6 +421,11 @@
   // ── Mode toggle ───────────────────────────────────────────────────────────
   btnDomain.addEventListener("click", function() { switchMode("domain"); });
   btnWindow.addEventListener("click", function() { switchMode("window"); });
+  btnPopularity.addEventListener("click", function() {
+    popularitySort = !popularitySort;
+    btnPopularity.classList.toggle("active", popularitySort);
+    render(currentMode);
+  });
 
   // ── Search ────────────────────────────────────────────────────────────────
   searchInput.addEventListener("input", function() {

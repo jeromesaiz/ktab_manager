@@ -151,6 +151,14 @@
     }
     #btnMuteAll.all-muted { color: #f0a030; background: transparent; animation: none; }
     #btnMuteAll:hover { background: #555; color: #fff; animation: none; }
+    /* Popularity sort toggle */
+    .topbar-sort {
+      border: none; cursor: pointer; font-size: 15px; line-height: 1;
+      padding: 3px 7px; border-radius: 4px; background: #3a3a3a; color: #777;
+      font-family: inherit; transition: background 0.15s, color 0.15s;
+    }
+    .topbar-sort.active { background: #555; color: #f0c060; }
+    .topbar-sort:hover { background: #555; color: #fff; }
     .tab-row.no-match { display: none; }
     .group-section.all-hidden { display: none; }
     .empty { padding: 30px; text-align: center; color: #666; font-size: 12px; }
@@ -162,9 +170,10 @@
     <span class="tab-total" id="totalCount"></span>
     <button id="btnMuteAll" title="Mute all tabs">&#128266;</button>
     <button class="topbar-btn" id="btnDupes" title="Close all duplicate tabs, keeping one per URL">Close dupes</button>
+    <button id="btnPopularity" class="topbar-sort active" title="Sort by most used tabs">&#8645;</button>
     <div class="toggle-wrap">
-      <button class="toggle-btn active" id="btnDomain">Domain</button>
-      <button class="toggle-btn"        id="btnWindow">Window</button>
+      <button class="toggle-btn active" id="btnDomain" title="Group tabs by domain">Domain</button>
+      <button class="toggle-btn"        id="btnWindow" title="Group tabs by window">Window</button>
     </div>
   </div>
   <div class="search-wrap">
